@@ -481,22 +481,9 @@ export default function WorkerList() {
           address: editingWorker.address,
           role: editingWorker.role,
           skills: (() => {
-            const validSkills = [
-              'Saw cutting', 'Guillotine cutting', 'Laser', 'Waterjet', 'Turret punch', 
-              'Folding', 'TIG welding', 'MIG welding', 'Cleanup/Deburr', 'Breakout', 
-              'Powdercoating', 'Inserts/components', 'Drilling', 'Sanding', 'Packaging', 'Delivery'
-            ];
-            
             if (typeof editingWorker.skills === 'string') {
               const skillsArray = editingWorker.skills.split(', ').filter(s => s.trim());
-              // Filter to only include valid skills that match the enum
-              const filteredSkills = skillsArray.filter(skill => validSkills.includes(skill));
-              console.log('Edit worker skills conversion:', { 
-                original: editingWorker.skills, 
-                split: skillsArray, 
-                filtered: filteredSkills 
-              });
-              return filteredSkills.length > 0 ? filteredSkills : ['Saw cutting']; // Fallback to prevent empty array
+              return skillsArray.length > 0 ? skillsArray : ['Saw cutting'];
             }
             return Array.isArray(editingWorker.skills) ? editingWorker.skills : ['Saw cutting'];
           })(),

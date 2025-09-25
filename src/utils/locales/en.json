@@ -244,7 +244,7 @@
         "phoneInvalid": "Please enter a valid phone number (10-15 digits)",
         "addressMaxLength": "Address must be less than 200 characters",
         "skillsRequired": "Please select at least one skill",
-        "skillsMaxLength": "You can select a maximum of 10 skills",
+        "skillsMaxLength": "You can select any number of skills",
         "hireDateFuture": "Hire date cannot be in the future",
         "statusRequired": "Status is required"
       },

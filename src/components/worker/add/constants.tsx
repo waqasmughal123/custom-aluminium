@@ -42,11 +42,10 @@ export const workerSchema = z.object({
     .refine((val) => !val || val.length <= 200, {
       message: 'Address must be less than 200 characters'
     }),
-  skills: z.array(z.enum(['Saw cutting', 'Guillotine cutting', 'Laser', 'Waterjet', 'Turret punch', 'Folding', 'TIG welding', 'MIG welding', 'Cleanup/Deburr', 'Breakout', 'Powdercoating', 'Inserts/components', 'Drilling', 'Sanding', 'Packaging', 'Delivery'], {
+    skills: z.array(z.enum(['Saw cutting', 'Guillotine cutting', 'Laser', 'Waterjet', 'Turret punch', 'Folding', 'TIG welding', 'MIG welding', 'Cleanup/Deburr', 'Breakout', 'Powdercoating', 'Inserts/components', 'Drilling', 'Sanding', 'Packaging', 'Delivery', 'Deburr machine operation', 'Fold setup', 'Fold repeat', 'Powder coat', 'DXF drafting/drawing', 'Assembly'], {
       message: 'Please select valid skills from the available options'
     }))
-    .min(1, 'Please select at least one skill')
-    .max(10, 'You can select a maximum of 10 skills'),
+    .min(1, 'Please select at least one skill'),
   hire_date: z.date()
     .optional()
     .refine((val) => !val || val <= new Date(), {
@@ -62,6 +61,7 @@ export type WorkerFormValues = z.infer<typeof workerSchema>;
 export type CreateWorkerData = Omit<WorkerFormValues, 'hire_date'> & {
   hire_date?: string; // API expects string format
 };
+
 
 // Worker skills options - manufacturing processes
 export const WORKER_SKILLS = [
@@ -81,6 +81,12 @@ export const WORKER_SKILLS = [
   { value: 'Sanding', label: 'Sanding' },
   { value: 'Packaging', label: 'Packaging' },
   { value: 'Delivery', label: 'Delivery' },
+  { value: 'Deburr machine operation', label: 'Deburr machine operation' },
+  { value: 'Fold setup', label: 'Fold setup' },
+  { value: 'Fold repeat', label: 'Fold repeat' },
+  { value: 'Powder coat', label: 'Powder coat' },
+  { value: 'DXF drafting/drawing', label: 'DXF drafting/drawing' },
+  { value: 'Assembly', label: 'Assembly' },
 ];
 
 // Status options

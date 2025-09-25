@@ -26,25 +26,11 @@ function transformApiWorkerToFormData(apiWorker: Worker): WorkerFormValues {
     phone: apiWorker.phone || "",
     address: apiWorker.address || "",
     skills: (() => {
-      const validSkills = [
-        'Saw cutting', 'Guillotine cutting', 'Laser', 'Waterjet', 'Turret punch', 
-        'Folding', 'TIG welding', 'MIG welding', 'Cleanup/Deburr', 'Breakout', 
-        'Powdercoating', 'Inserts/components', 'Drilling', 'Sanding', 'Packaging', 'Delivery'
-      ] as const;
-      
       if (Array.isArray(apiWorker.skills)) {
-        // Filter to only include valid skills
-        const filteredSkills = apiWorker.skills.filter(skill => validSkills.includes(skill as typeof validSkills[number]));
-        return filteredSkills.length > 0 ? filteredSkills as WorkerFormValues['skills'] : [];
+        return apiWorker.skills as WorkerFormValues['skills'];
       } else if (apiWorker.skills && typeof apiWorker.skills === 'string') {
         const skillsArray = apiWorker.skills.split(', ').filter(s => s.trim());
-        const filteredSkills = skillsArray.filter(skill => validSkills.includes(skill as typeof validSkills[number]));
-        console.log('Transform skills from string:', { 
-          original: apiWorker.skills, 
-          split: skillsArray, 
-          filtered: filteredSkills 
-        });
-        return filteredSkills.length > 0 ? filteredSkills as WorkerFormValues['skills'] : [];
+        return skillsArray as WorkerFormValues['skills'];
       }
       return [];
     })(),
