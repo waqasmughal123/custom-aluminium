@@ -5,7 +5,8 @@ import {
   Edit as EditIcon,
   FileCopy as FileCopyIcon,
   Visibility as VisibilityIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  Upload as UploadIcon
 } from "@mui/icons-material";
 import { Box, Alert, CircularProgress } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,10 +23,31 @@ import {
 } from '@/viewmodels/hooks/useJobs';
 import { DataTable, Button, LoadingSpinner } from '@/views/components/common';
 import { useToastActions } from '@/views/components/providers';
+import ImportJobModal from "../add/import";
 import AddJobModal from "../add/page";
 import type { JobExtended, ProcessConfigItem, DocumentConfigItem } from "../add/types";
 import { columns, filters, statusColors, JobStatus, JobPriority, PROCESS_STATUS } from "../constant";
 import { JobDisplay, transformJobForDisplay, transformJobForApi } from "./types";
+
+// Interface for parsed job data from import
+interface ParsedJobData {
+  job: string;
+  description: string;
+  customer: string;
+  contact: string;
+  quantity: number;
+  materialUnits: string;
+  labourUnits: string;
+  labourUnitsElapsed: string;
+  materialsText: string;
+  finishColour: string;
+  status: string;
+  priority: string;
+  amount?: string;
+  customerPO?: string;
+  locationCode?: string;
+  notes?: string;
+}
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -44,6 +66,7 @@ export default function JobList() {
   const searchParams = useSearchParams();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<JobDisplay | null>(null);
   
   const { showSuccess, showError } = useToastActions();
@@ -240,6 +263,57 @@ export default function JobList() {
         showError(errorMessage);
       }
     }, 'Creating job...');
+  };
+
+  const handleImportJobs = async (jobs: ParsedJobData[]) => {
+    try {
+      for (const jobData of jobs) {
+        const createData = {
+          job: jobData.job,
+          description: jobData.description,
+          status: jobData.status || 'NOT_STARTED',
+          priority: jobData.priority || 'MEDIUM',
+          amount: jobData.amount || undefined,
+          quantity: jobData.quantity || 1,
+          material_units: parseFloat(jobData.materialUnits) || 0,
+          labour_units: parseFloat(jobData.labourUnits) || 0,
+          labour_units_elapsed: parseFloat(jobData.labourUnitsElapsed) || 0,
+          customer: jobData.customer,
+          contact: jobData.contact,
+          customer_po: jobData.customerPO || '',
+          finish_colour: jobData.finishColour,
+          materials_text: jobData.materialsText,
+          location_code: jobData.locationCode || '',
+          notes: jobData.notes || '',
+          schedule_confirmed: false,
+          invoice_sent: false,
+          stock_available: false,
+          contacted: false,
+          user: {
+            id: '',
+            email: '',
+            first_name: '',
+            last_name: '',
+            role: 'worker',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          created_at: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        await createJobMutation.mutateAsync(createData);
+      }
+      
+      showSuccess(`Successfully imported ${jobs.length} jobs!`);
+      setIsImportModalOpen(false);
+      resetPagination();
+    } catch (error) {
+      console.error('Error importing jobs:', error);
+      showError('Failed to import jobs. Please try again.');
+      throw error;
+    }
   };
 
   const handleEditJob = async (job: JobDisplay) => {
@@ -606,16 +680,27 @@ export default function JobList() {
         pt: 3
       }}>
         <Box />
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={() => setIsAddModalOpen(true)}
-          sx={{ alignSelf: 'flex-end' }}
-          disabled={createJobMutation.isPending}
-        >
-          {createJobMutation.isPending ? 'Creating...' : 'Add Job'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<UploadIcon />}
+            onClick={() => setIsImportModalOpen(true)}
+            disabled={createJobMutation.isPending}
+          >
+            Import Jobs
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => setIsAddModalOpen(true)}
+            sx={{ alignSelf: 'flex-end' }}
+            disabled={createJobMutation.isPending}
+          >
+            {createJobMutation.isPending ? 'Creating...' : 'Add Job'}
+          </Button>
+        </Box>
       </Box>
 
       <Box sx={{ 
@@ -681,6 +766,13 @@ export default function JobList() {
         }}
         onSubmit={handleAddJob} // Not used in edit mode
         onUpdate={handleUpdateJob}
+      />
+
+      {/* Import Job Modal */}
+      <ImportJobModal
+        open={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImportJobs}
       />
       
       {/* Global Loading Spinner */}
