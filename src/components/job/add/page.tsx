@@ -1,6 +1,8 @@
 "use client";
 
+
 import { zodResolver } from "@hookform/resolvers/zod";
+import { FileCopy as FileCopyIcon } from "@mui/icons-material";
 import { 
   Modal, 
   Box, 
@@ -13,18 +15,28 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import type { Job as ApiJob, SelectedProcessCategory } from '@/models/job';
 import { useToastActions, useGlobalLoading } from '@/viewmodels/hooks';
 import { useDeleteDocument } from '@/viewmodels/hooks/useDocuments';
+import { useJobs } from '@/viewmodels/hooks/useJobs';
 import { useAllWorkers } from '@/viewmodels/hooks/useWorkers';
 import { FIRST_PROCESSES, SECONDARY_PROCESSES, FINAL_PROCESSES, ALL_MANUFACTURING_PROCESSES } from '../constant';
+import { transformJobForDisplay } from '../list/types';
+import type { JobDisplay } from '../list/types';
 import { modalStyle, jobSchema, JobFormValues } from './constants';
 import { DocumentList, DocumentAttachments } from './documents/page';
+import { DuplicateFieldModal, JobTableModal } from './duplicate';
 import JobFormFields from './form/page';
 import { ProcessSelection, validateProcessSequence } from './process-selection';
 import type { DocumentConfigItem } from "./types";
+import { 
+  AddJobModalProps, 
+  DocumentLink,
+  SelectedProcess
+} from './types';
+
 // Utility function to convert File to base64
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -38,11 +50,6 @@ const fileToBase64 = (file: File): Promise<string> => {
     reader.onerror = error => reject(error);
   });
 };
-import { 
-  AddJobModalProps, 
-  DocumentLink,
-  SelectedProcess
-} from './types';
 
 // Transform API job data to form-compatible format
 function transformApiJobToFormData(apiJob: ApiJob) {
@@ -82,16 +89,28 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
     Array<Omit<DocumentLink, "id" | "jobId" | "createdAt"> & { _file?: File }>
   >([]);
   const [existingDocuments, setExistingDocuments] = useState<DocumentLink[]>([]); // For display only
+  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
+  const [jobTableModalOpen, setJobTableModalOpen] = useState(false);
+  const [selectedSourceJob, setSelectedSourceJob] = useState<JobDisplay | null>(null);
 
   // Process selection state
   const [selectedProcesses, setSelectedProcesses] = useState<SelectedProcess[]>([]);
   
   // Fetch workers from API
   const { data: workers = [] } = useAllWorkers();
+  
+  // Fetch jobs for duplicate functionality
+  const { data: jobsResponse } = useJobs({ limit: 100 });
+  const availableJobs = useMemo(() => {
+    if (!jobsResponse?.results || !Array.isArray(jobsResponse.results)) {
+      return [];
+    }
+    return jobsResponse.results.map(transformJobForDisplay).filter(Boolean);
+  }, [jobsResponse]);
 
   // Document management hooks
   const deleteDocumentMutation = useDeleteDocument();
-  const { showError } = useToastActions();
+  const { showError, showSuccess } = useToastActions();
   const { withLoading } = useGlobalLoading();
 
   const { 
@@ -100,6 +119,8 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
     formState: { errors },
     reset,
     setError,
+    setValue,
+    watch,
   } = useForm<JobFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(jobSchema) as any,
@@ -378,6 +399,66 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
   const handleDeleteDocument = (index: number) => {
     const updatedDocuments = pendingDocuments.filter((_, i) => i !== index);
     setPendingDocuments(updatedDocuments);
+  };
+
+  // Duplicate functionality handlers
+  const handleOpenJobTableModal = () => {
+    setJobTableModalOpen(true);
+  };
+
+  const handleCloseJobTableModal = () => {
+    setJobTableModalOpen(false);
+    setSelectedSourceJob(null);
+  };
+
+  const handleSelectSourceJob = (job: JobDisplay) => {
+    setSelectedSourceJob(job);
+    setJobTableModalOpen(false);
+    setDuplicateModalOpen(true);
+  };
+
+  const handleDuplicateFields = (duplicatedData: Partial<JobFormValues>) => {
+    console.log('Duplicating fields:', duplicatedData); // Debug log
+    
+    // Process the duplicated data
+    const processedData = {
+      ...duplicatedData,
+      // Reset quantity to 1 for new job
+      quantity: 1,
+      // Update dates to current date
+      startDate: new Date(),
+    };
+
+    // Handle processes separately if they exist
+    if (duplicatedData.selectedProcesses && Array.isArray(duplicatedData.selectedProcesses)) {
+      console.log('Setting processes:', duplicatedData.selectedProcesses); // Debug log
+      setSelectedProcesses(duplicatedData.selectedProcesses as SelectedProcess[]);
+    }
+
+    // Set form values one by one for better control
+    Object.entries(processedData).forEach(([key, value]) => {
+      if (key !== 'selectedProcesses') { // Skip processes as they're handled separately
+        console.log(`Setting field ${key}:`, value); // Debug log
+        try {
+          setValue(key as keyof JobFormValues, value as JobFormValues[keyof JobFormValues], {
+            shouldValidate: true,
+            shouldDirty: true,
+            shouldTouch: true
+          });
+        } catch (error) {
+          console.error(`Error setting field ${key}:`, error);
+        }
+      }
+    });
+    
+    showSuccess(`Successfully copied ${Object.keys(duplicatedData).length} fields from previous job`);
+    setDuplicateModalOpen(false);
+    setSelectedSourceJob(null);
+  };
+
+  const handleCloseDuplicateModal = () => {
+    setDuplicateModalOpen(false);
+    setSelectedSourceJob(null);
   };
 
 
@@ -680,6 +761,16 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
               <Button variant="outlined" onClick={handleClose}>
                 Cancel
               </Button>
+              
+              <Button
+                variant="outlined"
+                startIcon={<FileCopyIcon />}
+                onClick={handleOpenJobTableModal}
+                sx={{ color: 'primary.main' }}
+              >
+                Use Previous Job
+              </Button>
+              
               <Button 
                 variant="contained"
                 disabled={!isFormValid()}
@@ -721,6 +812,22 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
         </DialogActions>
       </Dialog>
 
+      {/* Job Table Selection Modal */}
+      <JobTableModal
+        open={jobTableModalOpen}
+        onClose={handleCloseJobTableModal}
+        jobs={availableJobs}
+        onSelectJob={handleSelectSourceJob}
+        currentCustomer={watch('customer')}
+      />
+
+      {/* Duplicate Fields Modal */}
+      <DuplicateFieldModal
+        open={duplicateModalOpen}
+        onClose={handleCloseDuplicateModal}
+        sourceJob={selectedSourceJob}
+        onDuplicate={handleDuplicateFields}
+      />
 
     </>
   );
