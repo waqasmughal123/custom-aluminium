@@ -4,7 +4,7 @@ export interface JobProcess {
   order: number;
   estimatedHours: number;
   assigneeId: string | null;
-  status?: string;
+  status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED';
   processNumber?: number;
   process?: {
     id: string;
@@ -55,4 +55,47 @@ export interface JobProcessesTabProps {
 export interface JobDocumentsTabProps {
   job: import('@/models/job').Job;
   onUpdateDocuments: (documents: Document[], fullJobData?: import('@/models/job').Job) => void;
+}
+
+// Timer-related interfaces
+export interface TimerState {
+  isRunning: boolean;
+  startTime: number | null;
+  displaySeconds: number;
+  totalElapsed: number;
+  serverStartTime: string | null; // ISO timestamp from backend
+  serverCurrentTime: string | null; // Server time for sync
+  labourUnitsElapsed: number; // Previous sessions total from backend
+}
+
+export interface ActiveSession {
+  start_time: string;
+  current_duration_hours: number;
+}
+
+export interface TimerData {
+  status: "ACTIVE" | "PAUSED" | "STOPPED";
+  current_session_hours?: number;
+  total_elapsed_hours?: number;
+  can_pause?: boolean;
+  can_resume?: boolean;
+  can_start?: boolean;
+  timer_start_time?: string;
+  server_current_time?: string;
+  labour_units_elapsed?: number;
+}
+
+export interface TimerResponse {
+  timer_data?: TimerData;
+  active_session?: ActiveSession;
+  start_time?: string;
+  current_duration_hours?: number;
+  total_elapsed_hours?: number;
+  status?: "ACTIVE" | "PAUSED" | "STOPPED";
+}
+
+export interface JobOverviewTabProps {
+  job: import('@/models/job').Job;
+  onUpdateJob: (updatedData: Partial<import('@/models/job').Job>) => void;
+  isActive?: boolean;
 } 

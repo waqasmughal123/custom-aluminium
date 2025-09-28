@@ -55,7 +55,7 @@ function transformApiJobToFormData(apiJob: ApiJob) {
     quantity: apiJob.quantity || 1,
     materialUnits: apiJob.material_units ? apiJob.material_units.toString() : "",
     labourUnits: apiJob.labour_units ? apiJob.labour_units.toString() : "",
-    labourUnitsElapsed: apiJob.labour_units_elapsed ? apiJob.labour_units_elapsed.toString() : "",
+    labourUnitsElapsed: apiJob.labour_units_elapsed ? apiJob.labour_units_elapsed.toString() : "0",
     materialsText: apiJob.materials_text || "",
     customer: apiJob.customer || "",
     contact: apiJob.contact || "",
@@ -114,7 +114,7 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
       quantity: 1,
       materialUnits: "",
       labourUnits: "",
-      labourUnitsElapsed: "",
+      labourUnitsElapsed: "0",
       materialsText: "",
       customer: "",
       contact: "",
@@ -175,6 +175,7 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
                     selected: true,
                     estimatedHours: parseFloat(String(process.estimated_hours)) || 1,
                     assigneeId: process.assignee_id ? String(process.assignee_id) : null,
+                    status: (String(process.status) as 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED') || 'TODO',
                   });
                 } else {
                   console.warn('Process not found in constants:', process);
@@ -207,6 +208,7 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
               selected: true,
               estimatedHours: parseFloat(String(jobProcess.estimated_hours)) || 1,
               assigneeId: assignee?.id ? String(assignee.id) : null,
+              status: (String(jobProcess.status) as 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED') || 'TODO',
             };
           });
           
@@ -272,6 +274,7 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
             selected: true,
             estimatedHours: 1, // Default estimated hours
             assigneeId: null, // No worker assigned initially
+            status: 'TODO', // Default status
           };
           newProcesses = [...prev, newProcess];
         } else {
@@ -281,35 +284,39 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
         newProcesses = prev.filter(p => p.processId !== processId);
       }
       
-      // Update form control value
-      reset({
-        ...control._formValues,
-        selectedProcesses: newProcesses,
-      });
+      // Note: We manage selectedProcesses in component state, form will update on re-render
       
       return newProcesses;
     });
   };
 
-  // Handle process detail updates (estimated hours, worker assignment)
-  const handleProcessUpdate = (processId: string, field: 'estimatedHours' | 'assigneeId', value: number | string | null) => {
+  // Handle process detail updates (estimated hours, worker assignment, status)
+  const handleProcessUpdate = (processId: string, field: 'estimatedHours' | 'assigneeId' | 'status', value: number | string | null) => {
+    console.log(`Process update: ${field} = ${value} for process ${processId}`);
+    
     setSelectedProcesses(prev => {
       const newProcesses = prev.map(process => {
         if (process.processId === processId) {
-          return {
+          let updatedValue = value;
+          
+          if (field === 'estimatedHours') {
+            updatedValue = typeof value === 'number' ? value : parseFloat(String(value)) || 1;
+          } else if (field === 'status') {
+            updatedValue = String(value) as 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED';
+          }
+          
+          const updatedProcess = {
             ...process,
-            [field]: field === 'estimatedHours' ? (typeof value === 'number' ? value : parseFloat(String(value)) || 1) : value,
+            [field]: updatedValue,
           };
+          
+          console.log(`✅ Updated process ${process.name}: ${field} = ${updatedValue}`);
+          return updatedProcess;
         }
         return process;
       });
       
-      // Update form control value
-      reset({
-        ...control._formValues,
-        selectedProcesses: newProcesses,
-      });
-      
+      // Note: We manage selectedProcesses in component state, form will update on re-render
       return newProcesses;
     });
   };
@@ -470,8 +477,10 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
         name: process.name,
         estimated_hours: process.estimatedHours,
         assignee_id: process.assigneeId,
-        status: 'TODO' as const,
+        status: process.status,
       }));
+      
+      console.log('API Payload - Processes:', processesForApi.map(p => ({ name: p.name, status: p.status })));
 
       // Create selected_processes object grouped by category
       const selectedProcessesByCategory = {
@@ -479,16 +488,19 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
           process_type: string;
           estimated_hours: number;
           assignee_id: string | null;
+          status: string;
         }>,
         SECONDARY: [] as Array<{
           process_type: string;
           estimated_hours: number;
           assignee_id: string | null;
+          status: string;
         }>,
         FINAL: [] as Array<{
           process_type: string;
           estimated_hours: number;
           assignee_id: string | null;
+          status: string;
         }>,
       };
 
@@ -498,6 +510,7 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
           process_type: process.processId, // Use processId as process_type
           estimated_hours: process.estimatedHours,
           assignee_id: process.assigneeId,
+          status: process.status,
         };
 
         selectedProcessesByCategory[process.category].push(processDetail);
@@ -505,6 +518,7 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
 
       const formData = {
         ...data,
+        labourUnitsElapsed: mode === "add" ? "0" : data.labourUnitsElapsed, // Always start at 0 for new jobs
         selected_processes: selectedProcessesByCategory,
         processes: processesForApi, // Keep legacy format for backward compatibility
         documents: transformedDocuments,
@@ -724,4 +738,4 @@ export default function AddJobModal({ open, mode = "add", job, onClose, onSubmit
 
     </>
   );
-} 
+}

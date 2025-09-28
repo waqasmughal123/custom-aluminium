@@ -42,11 +42,8 @@ export const workerSchema = z.object({
     .refine((val) => !val || val.length <= 200, {
       message: 'Address must be less than 200 characters'
     }),
-  skills: z.array(z.enum(['Saw cutting', 'Guillotine cutting', 'Laser', 'Waterjet', 'Turret punch', 'Folding', 'TIG welding', 'MIG welding', 'Cleanup/Deburr', 'Breakout', 'Powdercoating', 'Inserts/components', 'Drilling', 'Sanding', 'Packaging', 'Delivery'], {
-      message: 'Please select valid skills from the available options'
-    }))
-    .min(1, 'Please select at least one skill')
-    .max(10, 'You can select a maximum of 10 skills'),
+    skills: z.array(z.enum(['Saw cutting', 'Guillotine cutting', 'Laser', 'Waterjet', 'Turret punch', 'Folding', 'TIG welding', 'MIG welding', 'Cleanup/Deburr', 'Breakout', 'Powdercoating', 'Inserts/components', 'Drilling', 'Sanding', 'Packaging', 'Delivery', 'Deburr machine operation', 'Fold setup', 'Fold repeat', 'Powder coat', 'DXF drafting/drawing', 'Assembly', 'Laser operation', 'Waterjet operation', 'Turret punch operation', 'Sand', 'Drill', 'Powder coat', 'Inserts/nuts', 'Assembly']))
+    .min(1, 'Please select at least one skill'),
   hire_date: z.date()
     .optional()
     .refine((val) => !val || val <= new Date(), {
@@ -81,6 +78,12 @@ export const WORKER_SKILLS = [
   { value: 'Sanding', label: 'Sanding' },
   { value: 'Packaging', label: 'Packaging' },
   { value: 'Delivery', label: 'Delivery' },
+  { value: 'Deburr machine operation', label: 'Deburr machine operation' },
+  { value: 'Fold setup', label: 'Fold setup' },
+  { value: 'Fold repeat', label: 'Fold repeat' },
+  { value: 'Powder coat', label: 'Powder coat' },
+  { value: 'DXF drafting/drawing', label: 'DXF drafting/drawing' },
+  { value: 'Assembly', label: 'Assembly' },
 ];
 
 // Status options

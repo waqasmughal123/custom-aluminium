@@ -53,6 +53,7 @@ export interface SelectedProcess {
   selected: boolean;
   estimatedHours: number;
   assigneeId: string | null;
+  status: 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED';
 }
 
 // Legacy process item interface (for backward compatibility)

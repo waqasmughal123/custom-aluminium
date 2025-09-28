@@ -4,6 +4,7 @@ import { Box, Typography, Stack, Divider } from "@mui/material";
 import { Controller, Control, FieldErrors } from "react-hook-form";
 import { InputText, Select, DatePicker, Checkbox, TextArea } from '@/views/components/common';
 import { statusOptions, JobFormValues } from '../constants';
+import { formatTimeFromHours } from '../../constant';
 
 interface JobFormFieldsProps {
   control: Control<JobFormValues>;
@@ -176,17 +177,21 @@ export default function JobFormFields({ control, errors }: JobFormFieldsProps) {
         <Controller
           name="labourUnitsElapsed"
           control={control}
-          render={({ field }) => (
-            <InputText
-              {...field}
-              type="number"
-              label="Units Elapsed *"
-              error={!!errors.labourUnitsElapsed}
-              helperText={errors.labourUnitsElapsed?.message}
-              inputProps={{ min: 0, step: 1 }}
-              fullWidth
-            />
-          )}
+          render={({ field }) => {
+            // Convert hours to time format for display
+            const timeValue = field.value ? formatTimeFromHours(parseFloat(field.value) || 0) : "00:00:00";
+            return (
+              <InputText
+                {...field}
+                value={timeValue}
+                label="Units Elapsed (auto-managed by timer)"
+                error={!!errors.labourUnitsElapsed}
+                helperText="This field shows time in HH:MM:SS format and is automatically updated by the timer system"
+                disabled={true}
+                fullWidth
+              />
+            );
+          }}
         />
         <Controller
           name="finishColour"
@@ -338,5 +343,4 @@ export default function JobFormFields({ control, errors }: JobFormFieldsProps) {
         />
       </Box>
     </Stack>
-  );
-} 
+  );}     

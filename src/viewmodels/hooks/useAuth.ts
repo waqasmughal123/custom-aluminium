@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useState } from 'react';
 import type { AuthUser, LoginCredentials } from '../../services/auth';
+import { clearAllTimerStorage } from '@/utils/timerStorage';
 
 export interface UseAuthResult {
   user: AuthUser | null;
@@ -54,10 +55,14 @@ export const useAuth = (): UseAuthResult => {
 
   const logout = async (): Promise<void> => {
     try {
+      // Clear timer localStorage before logout
+      clearAllTimerStorage();
+      
       // Use signOut without options first to avoid API issues
       await signOut();
     } catch {
       // Fallback: clear session and redirect manually
+      clearAllTimerStorage();
       router.push('/login');
       // Force page reload to clear any cached session
       window.location.href = '/login';

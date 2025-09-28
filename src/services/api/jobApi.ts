@@ -1,3 +1,4 @@
+import type { TimerResponse } from '@/components/job/detail/types';
 import type { Job, CreateJobRequest, UpdateJobRequest, JobFilters, JobsApiResponse, JobProcess, JobDocument } from '../../models/job';
 import type { QueryParams } from '../../utils/types/api';
 import { apiClient } from './client';
@@ -45,6 +46,34 @@ export class JobApiService {
 
   async getJobDocuments(jobId: string): Promise<JobDocument[]> {
     return await apiClient.get<JobDocument[]>(`${this.basePath}${jobId}/documents/`);
+  }
+
+  // Timer-specific API methods
+  async startTimer(jobId: string): Promise<TimerResponse> {
+    return await apiClient.post<TimerResponse>(`${this.basePath}${jobId}/start_timer/`);
+  }
+
+  async pauseTimer(jobId: string): Promise<TimerResponse> {
+    return await apiClient.post<TimerResponse>(`${this.basePath}${jobId}/pause_timer/`);
+  }
+
+  async completeJob(jobId: string): Promise<TimerResponse & { job?: Job }> {
+    return await apiClient.post<TimerResponse & { job?: Job }>(`${this.basePath}${jobId}/complete_job/`);
+  }
+
+  async getActiveTimerSession(jobId: string): Promise<TimerResponse | null> {
+    try {
+      return await apiClient.get<TimerResponse>(`${this.basePath}${jobId}/active_timer/`);
+    } catch {
+      // Return null if no active session
+      return null;
+    }
+  }
+
+  async updateElapsedTime(jobId: string, elapsedHours: number): Promise<TimerResponse & { job?: Job }> {
+    return await apiClient.patch<TimerResponse & { job?: Job }>(`${this.basePath}${jobId}/update_elapsed_time/`, {
+      labour_units_elapsed: elapsedHours
+    });
   }
 }
 

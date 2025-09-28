@@ -253,6 +253,16 @@ export class ApiClient {
   public async logout(): Promise<void> {
     this.clearAuthToken();
     
+    // Clear timer localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const { clearAllTimerStorage } = await import('@/utils/timerStorage');
+        clearAllTimerStorage();
+      } catch (error) {
+        console.error('Failed to clear timer storage:', error);
+      }
+    }
+    
     // If using NextAuth, sign out
     if (typeof window !== 'undefined') {
       try {

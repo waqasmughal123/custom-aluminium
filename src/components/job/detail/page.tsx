@@ -280,6 +280,7 @@ export default function JobDetailPage() {
               <JobOverviewTab 
                 job={job} 
                 onUpdateJob={(updatedData) => setJob({ ...job, ...updatedData })}
+                isActive={tabValue === 0}
               />
             </TabPanel>
             

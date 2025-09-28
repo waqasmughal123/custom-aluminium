@@ -16,12 +16,14 @@ import type { SelectChangeEvent } from '@mui/material';
 import { motion } from "framer-motion";
 import React from "react";
 import { InputText, Select, type SelectOption } from '@/views/components/common';
+import { processStatusOptions } from "../constants";
 import type { ManufacturingProcess, SelectedProcess, Worker } from "../types";
 import {
   FIRST_PROCESSES,
   SECONDARY_PROCESSES,
   FINAL_PROCESSES,
 } from "../../constant";
+
 
 // Validation function for process sequence
 export function validateProcessSequence(selectedProcesses: SelectedProcess[]): {
@@ -64,7 +66,7 @@ interface ProcessSelectionProps {
   selectedProcesses: SelectedProcess[];
   workers: Worker[];
   onProcessToggle: (processId: string, selected: boolean) => void;
-  onProcessUpdate: (processId: string, field: 'estimatedHours' | 'assigneeId', value: number | string | null) => void;
+  onProcessUpdate: (processId: string, field: 'estimatedHours' | 'assigneeId' | 'status', value: number | string | null) => void;
 }
 
 interface ProcessCategoryProps {
@@ -74,7 +76,7 @@ interface ProcessCategoryProps {
   selectedProcesses: SelectedProcess[];
   workers: Worker[];
   onProcessToggle: (processId: string, selected: boolean) => void;
-  onProcessUpdate: (processId: string, field: 'estimatedHours' | 'assigneeId', value: number | string | null) => void;
+  onProcessUpdate: (processId: string, field: 'estimatedHours' | 'assigneeId' | 'status', value: number | string | null) => void;
   color: string;
 }
 
@@ -219,6 +221,16 @@ function ProcessCategory({
                         size="small"
                         sx={{ width: 140 }}
                         inputProps={{ min: 0.25, step: 0.25, max: 999 }}
+                      />
+                      
+                      <Select
+                        label="Status"
+                        value={selectedProcess?.status || "TODO"}
+                        options={processStatusOptions}
+                        onChange={(e: SelectChangeEvent) => 
+                          onProcessUpdate(process.id, 'status', e.target.value)
+                        }
+                        FormControlProps={{ size: 'small', sx: { minWidth: 140 } }}
                       />
                       
                       <Select

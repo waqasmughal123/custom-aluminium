@@ -166,6 +166,17 @@ export interface Job {
   assigned_to: User | null;
   processes: JobProcess[];
   documents: JobDocument[];
+  timer_data?: TimerData;
+}
+
+// Timer data interface from backend
+export interface TimerData {
+  status: 'ACTIVE' | 'INACTIVE' | 'PAUSED';
+  current_session_hours: number;
+  total_elapsed_hours: number;
+  can_pause: boolean;
+  can_resume: boolean;
+  can_start: boolean;
 }
 
 // API Response interface for Django REST framework pagination

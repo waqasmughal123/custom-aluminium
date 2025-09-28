@@ -4,6 +4,15 @@ import { formatDate } from "@/utils/helpers/dateFormat";
 import { TableColumn, FilterConfig } from "@/views/components/common";
 import { JobDisplay } from "./list/types";
 
+// Time formatting utility for labour units elapsed
+export const formatTimeFromHours = (hours: number): string => {
+  const totalSeconds = hours * 3600;
+  const hoursDisplay = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  return `${hoursDisplay.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
+
  
   export const JobStatus = [
     "NOT_STARTED",
@@ -319,6 +328,7 @@ import { JobDisplay } from "./list/types";
       label: 'Units Elapsed',
       align: 'center',
       sortable: true,
+      render: (value) => formatTimeFromHours(value as number || 0),
       minWidth: 120
     },
     {

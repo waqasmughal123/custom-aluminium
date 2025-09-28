@@ -73,6 +73,33 @@ export const priorityColors = {
   'HIGH': { main: '#F44336', background: 'rgba(244, 67, 54, 0.1)' },
 };
 
+// Process status constants (matching backend API)
+export const PROCESS_STATUS = [
+  "TODO",
+  "IN_PROGRESS", 
+  "COMPLETE",
+  "ON_HOLD",
+  "CANCELLED"
+] as const;
+
+// Process status options for Select component
+export const processStatusOptions: SelectOption[] = [
+  { value: 'TODO', label: 'To Do' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'ON_HOLD', label: 'On Hold' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+];
+
+// Process status colors
+export const processStatusColors = {
+  TODO: { main: "#9E9E9E", background: "rgba(158, 158, 158, 0.1)", text: "#000000" },
+  IN_PROGRESS: { main: "#FFEB3B", background: "rgba(255, 235, 59, 0.1)", text: "#000000" },
+  COMPLETE: { main: "#4CAF50", background: "rgba(76, 175, 80, 0.1)", text: "#FFFFFF" },
+  ON_HOLD: { main: "#FF9800", background: "rgba(255, 152, 0, 0.1)", text: "#FFFFFF" },
+  CANCELLED: { main: "#F44336", background: "rgba(244, 67, 54, 0.1)", text: "#FFFFFF" }
+};
+
 // Job schema for form validation
 export const jobSchema = z.object({
   job: z.string().min(1, "Job title is required"),
@@ -89,10 +116,7 @@ export const jobSchema = z.object({
     const num = parseFloat(val);
     return !isNaN(num) && num > 0;
   }, "Labour units must be a valid positive number"),
-  labourUnitsElapsed: z.string().min(1, "Labour units elapsed are required").refine((val) => {
-    const num = parseFloat(val);
-    return !isNaN(num) && num > 0;
-  }, "Labour units elapsed must be a valid positive number"),
+  labourUnitsElapsed: z.string().optional().default("0"), // Auto-managed by timer system
   customer: z.string().min(1, "Customer is required"),
   contact: z.string().min(1, "Contact is required"),
   customerPO: z.string().optional(),
@@ -116,6 +140,7 @@ export const jobSchema = z.object({
     selected: z.boolean(),
     estimatedHours: z.coerce.number().min(0.25, "Estimated hours must be at least 0.25").max(999, "Estimated hours cannot exceed 999"),
     assigneeId: z.preprocess(val => val === "" ? null : val, z.string().nullable()),
+    status: z.enum(['TODO', 'IN_PROGRESS', 'COMPLETE', 'ON_HOLD', 'CANCELLED']).default('TODO'),
   })).optional(),
 });
 

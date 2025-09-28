@@ -17,12 +17,13 @@ import { useAllWorkers } from '@/viewmodels/hooks/useWorkers';
 import { Button, InputText, Select, LoadingSpinner } from '@/views/components/common';
 import { useToastActions } from '@/views/components/providers';
 import { JobProcess, JobProcessesTabProps } from '../types';
+import { processStatusOptions } from '../../add/constants';
 import { ALL_MANUFACTURING_PROCESSES } from '../../constant';
 
 export default function JobProcessesTab({ job, onUpdateProcesses }: JobProcessesTabProps) {
   const { t } = useTranslation();
   
-bun   // State management
+  // State management
   const [processes, setProcesses] = useState<JobProcess[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -80,10 +81,15 @@ bun   // State management
     console.log('Updated processes:', updatedProcesses);
   }, [processes]);
 
-  // Handle updating process details (estimated hours, assignee) - local state only
+  // Handle updating process details (estimated hours, assignee, status) - local state only
   const handleProcessUpdate = useCallback((processId: string, field: string, value: number | string | null) => {
+    console.log(`Updating process ${processId}: ${field} = ${value}`);
+    
     const processToUpdate = processes.find(p => p.processId === processId || p.id === processId);
-    if (!processToUpdate) return;
+    if (!processToUpdate) {
+      console.log('❌ Process not found for update!');
+      return;
+    }
 
     // Update local state only
     const updatedProcesses = processes.map(p => 
@@ -101,8 +107,18 @@ bun   // State management
     setProcesses(updatedProcesses);
     setHasChanges(true); // Mark that changes have been made
     
-    console.log('Process updated:', processId, field, value);
-    console.log('Updated processes:', updatedProcesses);
+    console.log(`✅ Process updated: ${processToUpdate.process?.name} ${field} = ${value}`);
+    
+    // Special debug for status updates
+    if (field === 'status') {
+      const updatedProcess = updatedProcesses.find(p => p.processId === processId || p.id === processId);
+      console.log(`📊 Status update verification:`, {
+        processName: processToUpdate.process?.name,
+        oldStatus: processToUpdate.status,
+        newStatus: value,
+        updatedProcessStatus: updatedProcess?.status
+      });
+    }
   }, [processes, workers]);
 
   // Helper function to reload processes from job data
@@ -159,7 +175,7 @@ bun   // State management
           order: (jobProcess.order as number) || index + 1,
           estimatedHours: estimatedHours,
           assigneeId: assigneeData?.id as string || null,
-          status: (jobProcess.status as string) || 'TODO',
+          status: (jobProcess.status as 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED') || 'TODO',
           processNumber: index + 1,
           process: {
             id: processData?.id as string || jobProcess.id as string,
@@ -209,9 +225,9 @@ bun   // State management
 
       // Create selected_processes object grouped by category (new structured format)
       const selectedProcessesByCategory = {
-        FIRST: [] as Array<{ process_type: string; name: string; estimated_hours: number; assignee_id: string | null; }>,
-        SECONDARY: [] as Array<{ process_type: string; name: string; estimated_hours: number; assignee_id: string | null; }>,
-        FINAL: [] as Array<{ process_type: string; name: string; estimated_hours: number; assignee_id: string | null; }>,
+        FIRST: [] as Array<{ process_type: string; name: string; estimated_hours: number; assignee_id: string | null; status: string; }>,
+        SECONDARY: [] as Array<{ process_type: string; name: string; estimated_hours: number; assignee_id: string | null; status: string; }>,
+        FINAL: [] as Array<{ process_type: string; name: string; estimated_hours: number; assignee_id: string | null; status: string; }>,
       };
 
       processes.forEach((process) => {
@@ -227,6 +243,7 @@ bun   // State management
           name: process.process?.name || 'Unknown Process', // Include process name
           estimated_hours: process.estimatedHours || 1,
           assignee_id: process.assigneeId || null,
+          status: process.status || 'TODO',
         };
 
         if (processInfo) {
@@ -249,6 +266,23 @@ bun   // State management
       console.log('Processes for API (legacy format):', processesForApi);
       console.log('Selected processes by category (new format):', selectedProcessesByCategory);
       console.log('Final update payload:', updatePayload);
+      
+      // Debug status field specifically
+      console.log('=== STATUS FIELD DEBUG ===');
+      processes.forEach((p, index) => {
+        console.log(`Process ${index}: ${p.process?.name}, Status: "${p.status}" (type: ${typeof p.status})`);
+      });
+      
+      processesForApi.forEach((p, index) => {
+        console.log(`API Process ${index}: ${p.name}, Status: "${p.status}" (type: ${typeof p.status})`);
+      });
+      
+      Object.entries(selectedProcessesByCategory).forEach(([category, procs]) => {
+        procs.forEach((p, index) => {
+          console.log(`${category} Process ${index}: ${p.name}, Status: "${p.status}" (type: ${typeof p.status})`);
+        });
+      });
+      console.log('=== END STATUS DEBUG ===');
       console.log('=== END DEBUG ===');
 
       // Update job via API
@@ -359,7 +393,7 @@ bun   // State management
             order: (jobProcess.order as number) || index + 1,
             estimatedHours: estimatedHours,
             assigneeId: assigneeData?.id as string || null,
-            status: (jobProcess.status as string) || 'TODO',
+            status: (jobProcess.status as 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED') || 'TODO',
             processNumber: index + 1,
             process: {
               id: processData?.id as string || jobProcess.id as string,
@@ -438,7 +472,8 @@ bun   // State management
             )?.category || 'SECONDARY',
             selected: true,
             estimatedHours: p.estimatedHours || 1,
-            assigneeId: p.assigneeId || null
+            assigneeId: p.assigneeId || null,
+            status: p.status || 'TODO'
           }));
 
           const totalEstimated = selectedProcesses.reduce((sum, p) => sum + p.estimatedHours, 0);
@@ -520,8 +555,19 @@ bun   // State management
                     <Box sx={{ p: 2 }}>
                       <FormGroup>
                         {category.processes.map((process) => {
-                          const selectedProcess = selectedProcesses.find(sp => sp.processId === process.id);
-                          const isSelected = Boolean(selectedProcess);
+                          // Find the corresponding job process more robustly
+                          const jobProcess = processes.find(p => 
+                            p.processId === process.id ||
+                            p.process?.name === process.name ||
+                            p.process?.name?.toLowerCase() === process.name.toLowerCase()
+                          );
+                          
+                          const isSelected = Boolean(jobProcess);
+                          
+                          // Debug: Check process matching
+                          if (!jobProcess) {
+                            console.log(`⚠️ No job process found for template: ${process.name} (ID: ${process.id})`);
+                          }
                           
                           return (
                             <Box key={process.id} sx={{ 
@@ -553,12 +599,16 @@ bun   // State management
                               />
                               
                               <Collapse in={isSelected}>
-                                <Box sx={{ ml: 4, mt: 1, display: 'flex', gap: 2, alignItems: 'center' }}>
+                                <Box sx={{ ml: 4, mt: 1, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                     <InputText
                       type="number"
                                     label="Estimated Hours"
-                                    value={selectedProcess?.estimatedHours?.toString() || '1'}
-                                    onChange={(e) => handleProcessUpdate(process.id, 'estimatedHours', parseFloat(e.target.value) || 1)}
+                                    value={jobProcess?.estimatedHours?.toString() || '1'}
+                                    onChange={(e) => {
+                                      if (jobProcess) {
+                                        handleProcessUpdate(jobProcess.id, 'estimatedHours', parseFloat(e.target.value) || 1);
+                                      }
+                                    }}
                                     size="small"
                                     sx={{ width: 140 }}
                                     inputProps={{ min: 0.25, step: 0.25, max: 999 }}
@@ -566,10 +616,32 @@ bun   // State management
                                   />
                                   
                                   <Select
+                                    label="Status"
+                                    value={jobProcess?.status || "TODO"}
+                                    options={processStatusOptions}
+                                    onChange={(e) => {
+                                      console.log(`Status dropdown: ${process.name} -> ${e.target.value}`);
+                                      console.log('JobProcess found:', !!jobProcess, 'ID:', jobProcess?.id);
+                                      
+                                      if (jobProcess) {
+                                        handleProcessUpdate(jobProcess.id, 'status', e.target.value);
+                                      } else {
+                                        console.log('❌ No matching job process found for status update!');
+                                      }
+                                    }}
+                                    FormControlProps={{ size: 'small', sx: { minWidth: 140 } }}
+                                    disabled={isUpdating}
+                                  />
+                                  
+                                  <Select
                                     label="Assign Worker"
-                                    value={selectedProcess?.assigneeId || ""}
+                                    value={jobProcess?.assigneeId || ""}
                                     options={workerOptions}
-                                    onChange={(e) => handleProcessUpdate(process.id, 'assigneeId', e.target.value || null)}
+                                    onChange={(e) => {
+                                      if (jobProcess) {
+                                        handleProcessUpdate(jobProcess.id, 'assigneeId', e.target.value || null);
+                                      }
+                                    }}
                                     FormControlProps={{ size: 'small', sx: { minWidth: 200 } }}
                                     disabled={isUpdating}
                                   />
